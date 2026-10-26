@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/luku-favicon.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>LUKU - Your Personal Style Companion</title>
+
+        <!-- PWA Configuration -->
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#4f46e5" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="LUKU" />
+        <link rel="apple-touch-icon" href="/luku-favicon.svg" />
+        <meta
+            name="description"
+            content="LUKU: Discover personalized fashion recommendations, sustainable styling, and lifestyle empowerment. Your AI-powered wardrobe stylist for conscious living and fashion innovation."
+        />
+        <meta
+            name="keywords"
+            content="LUKU, personal stylist, AI fashion, sustainable fashion, wardrobe organizer, outfit suggestions, color harmony, style evolution"
+        />
+        <meta
+            property="og:title"
+            content="LUKU - Your Personal Style Companion"
+        />
+        <meta
+            property="og:description"
+            content="Discover personalized fashion recommendations, sustainable styling, and lifestyle empowerment with LUKU."
+        />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.20.0",
+                    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+                    "react": "https://aistudiocdn.com/react@^19.1.1",
+                    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+                    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm",
+                    "@reduxjs/toolkit": "https://cdn.jsdelivr.net/npm/@reduxjs/toolkit@2.2.6/dist/redux-toolkit.browser.mjs",
+                    "react-redux": "https://cdn.jsdelivr.net/npm/react-redux@9.1.2/dist/react-redux.mjs",
+                    "redux": "https://cdn.jsdelivr.net/npm/redux@5.0.1/dist/redux.mjs",
+                    "use-sync-external-store": "https://cdn.jsdelivr.net/npm/use-sync-external-store@1.2.0",
+                    "use-sync-external-store/": "https://cdn.jsdelivr.net/npm/use-sync-external-store@1.2.0/",
+                    "immer": "https://cdn.jsdelivr.net/npm/immer@10.1.1/dist/immer.mjs"
+                }
+            }
+        </script>
+        <!-- <link rel="stylesheet" href="/index.css" /> -->
+
+        <!-- Service Worker Registration -->
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js');
+                });
+            }
+        </script>
+    </head>
+    <body class="bg-gray-50">
+        <div id="root"></div>
+        <script type="module" src="/index.tsx"></script>
+    </body>
+</html>

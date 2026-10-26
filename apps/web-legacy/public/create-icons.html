@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>LUKU Icon Generator</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                background: #f0f0f0;
+            }
+            .icon-container {
+                display: inline-block;
+                margin: 20px;
+                text-align: center;
+            }
+            .icon {
+                background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 24px;
+                border-radius: 20%;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+            .icon-192 {
+                width: 192px;
+                height: 192px;
+                font-size: 48px;
+            }
+            .icon-512 {
+                width: 512px;
+                height: 512px;
+                font-size: 128px;
+            }
+            canvas {
+                border: 1px solid #ccc;
+                margin: 10px;
+            }
+            button {
+                padding: 10px 20px;
+                margin: 10px;
+                background: #4f46e5;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>LUKU PWA Icon Generator</h1>
+        <p>
+            This tool helps you create PNG icons for your PWA. Right-click on
+            the generated icons and save them as PNG files.
+        </p>
+
+        <div class="icon-container">
+            <div class="icon icon-192" id="icon192">LUKU</div>
+            <canvas id="canvas192" width="192" height="192"></canvas>
+            <br />
+            <button onclick="generateIcon(192)">Generate 192x192 PNG</button>
+        </div>
+
+        <div class="icon-container">
+            <div class="icon icon-512" id="icon512">LUKU</div>
+            <canvas id="canvas512" width="512" height="512"></canvas>
+            <br />
+            <button onclick="generateIcon(512)">Generate 512x512 PNG</button>
+        </div>
+
+        <script>
+            function generateIcon(size) {
+                const canvas = document.getElementById(`canvas${size}`);
+                const ctx = canvas.getContext('2d');
+
+                // Create gradient background
+                const gradient = ctx.createLinearGradient(0, 0, size, size);
+                gradient.addColorStop(0, '#4f46e5');
+                gradient.addColorStop(1, '#7c3aed');
+
+                // Fill background
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, size, size);
+
+                // Add text
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${size * 0.25}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('LUKU', size / 2, size / 2);
+
+                // Add shadow effect
+                ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+            }
+
+            // Generate both icons on load
+            window.onload = function () {
+                generateIcon(192);
+                generateIcon(512);
+            };
+        </script>
+    </body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "LUKU",
+    "slug": "luku-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "luku",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.luku.mobile",
+      "usesAppleSignIn": true
+    },
+    "android": {
+      "package": "com.luku.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "apiBaseUrl": "",
+      "googleIosClientId": "",
+      "googleWebClientId": "",
+      "eas": {
+        "projectId": "3d5b5439-09a1-482c-bf50-fa3321e90f69"
+      }
+    },
+    "owner": "felixkb"
+  }
+}

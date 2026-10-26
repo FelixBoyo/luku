@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2022"
+    ],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "paths": {
+      "@core/*": [
+        "./../../core/*"
+      ]
+    }
+  },
+  "include": [
+    "app.config.ts",
+    "index.ts",
+    "src/**/*",
+  ],
+  "exclude": [
+    "node_modules",
+    "__tests__"
+  ],
+  "extends": "expo/tsconfig.base"
+}

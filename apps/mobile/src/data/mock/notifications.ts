@@ -1,0 +1,68 @@
+import { Bell, Package, Sparkles, Store } from 'lucide-react-native';
+import type { AppNotification } from '../../types/domain/notification';
+
+export const mockNotifications: AppNotification[] = [
+    {
+        id: 'n1',
+        category: 'orders',
+        icon: Package,
+        title: 'Order Shipped',
+        body: 'Your order #ORD-2847 has been shipped',
+        time: '2 hours ago',
+        unread: true,
+    },
+    {
+        id: 'n2',
+        category: 'style',
+        icon: Sparkles,
+        title: 'New Outfit Suggestions',
+        body: '5 new outfit ideas based on your wardrobe',
+        time: '4 hours ago',
+        unread: true,
+    },
+    {
+        id: 'n3',
+        category: 'marketplace',
+        icon: Store,
+        title: 'Price Drop Alert',
+        body: 'Vintage Leather Bag is now KES 4,500',
+        time: '1 day ago',
+        unread: true,
+    },
+    {
+        id: 'n4',
+        category: 'orders',
+        icon: Package,
+        title: 'Order Delivered',
+        body: 'Your order #ORD-2831 has been delivered',
+        time: '2 days ago',
+        unread: false,
+    },
+    {
+        id: 'n5',
+        category: 'style',
+        icon: Sparkles,
+        title: 'Style DNA Updated',
+        body: 'Your style profile has been refreshed',
+        time: '2 days ago',
+        unread: false,
+    },
+    {
+        id: 'n6',
+        category: 'marketplace',
+        icon: Store,
+        title: 'Item Sold',
+        body: 'Your Black Dress sold for KES 5,500',
+        time: '5 days ago',
+        unread: false,
+    },
+    {
+        id: 'n7',
+        category: 'style',
+        icon: Bell,
+        title: 'Virtual Try-On Ready',
+        body: 'Try our new Virtual Try-On feature',
+        time: '1 week ago',
+        unread: false,
+    },
+];

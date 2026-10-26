@@ -1,0 +1,154 @@
+{
+  "capturedAt": "2026-06-11T11:42:21.304Z",
+  "projectRef": "szubfkpamgpicteuybiw",
+  "publicTables": [
+    "album_outfits",
+    "albums",
+    "business_accounts",
+    "business_kyc",
+    "cart_items",
+    "clothing_items",
+    "inbox_messages",
+    "inbox_thread_reads",
+    "inbox_threads",
+    "listings",
+    "mannequin_settings",
+    "mood_board_ai_insights",
+    "mood_board_collaborators",
+    "mood_board_pins",
+    "mood_board_share_links",
+    "mood_boards",
+    "orders",
+    "outfit_items",
+    "outfit_pieces",
+    "outfits",
+    "product_reviews",
+    "product_tags",
+    "product_views",
+    "products",
+    "profiles",
+    "promotions",
+    "returns",
+    "seller_kyc",
+    "style_customizations",
+    "style_playground_sessions",
+    "style_queries",
+    "trips",
+    "user_blocks",
+    "user_follows",
+    "user_preferences",
+    "user_profile_images",
+    "wardrobe_items",
+    "wardrobe_wear_log",
+    "wishlist"
+  ],
+  "publicViews": [
+    "classified_pins",
+    "products_with_ratings",
+    "products_with_tags"
+  ],
+  "rpcs": [
+    "calculate_product_rating",
+    "create_order_with_stock_check",
+    "ensure_single_default_profile_image",
+    "get_board_insights",
+    "get_current_viewers",
+    "get_pins_by_category",
+    "get_user_trending_tags",
+    "handle_new_user",
+    "inbox_touch_thread_on_message",
+    "search_products_paginated",
+    "update_mannequin_settings_updated_at",
+    "update_mood_boards_updated_at",
+    "update_updated_at_column"
+  ],
+  "buckets": [
+    "business-assets",
+    "gym-submission-media",
+    "mood-board-images",
+    "product-images",
+    "style-playground-images",
+    "user-profile-images",
+    "wardrobe-images"
+  ],
+  "healthRpcs": [
+    "create_order_with_stock_check",
+    "search_products_paginated"
+  ],
+  "activeProducts": "9",
+  "gapTables": [
+    {
+      "table": "profiles",
+      "inLiveDb": true,
+      "plannedMigration": "003"
+    },
+    {
+      "table": "products",
+      "inLiveDb": true,
+      "plannedMigration": "001"
+    },
+    {
+      "table": "wishlist",
+      "inLiveDb": true,
+      "plannedMigration": "006"
+    },
+    {
+      "table": "wardrobe_items",
+      "inLiveDb": true,
+      "plannedMigration": "004"
+    },
+    {
+      "table": "clothing_items",
+      "inLiveDb": true,
+      "plannedMigration": "legacy/004"
+    },
+    {
+      "table": "outfits",
+      "inLiveDb": true,
+      "plannedMigration": "004"
+    },
+    {
+      "table": "listings",
+      "inLiveDb": true,
+      "plannedMigration": "005"
+    },
+    {
+      "table": "cart_items",
+      "inLiveDb": true,
+      "plannedMigration": "006"
+    },
+    {
+      "table": "orders",
+      "inLiveDb": true,
+      "plannedMigration": "001"
+    },
+    {
+      "table": "inbox_threads",
+      "inLiveDb": true,
+      "plannedMigration": "007"
+    },
+    {
+      "table": "inbox_messages",
+      "inLiveDb": true,
+      "plannedMigration": "007"
+    }
+  ],
+  "gapBuckets": [
+    {
+      "name": "product-images",
+      "inLiveDb": true
+    },
+    {
+      "name": "business-assets",
+      "inLiveDb": true
+    },
+    {
+      "name": "user-profile-images",
+      "inLiveDb": true
+    },
+    {
+      "name": "style-playground-images",
+      "inLiveDb": true
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# The required shared-hook test for PR 2 lives at:
+#   core/hooks/useProductFilters.test.ts
+# That test is run by the root Vitest config and exercises the same hook
+# imported here as `@core/hooks/useProductFilters`.
+#
+# A mobile-local Jest runner is intentionally deferred (see TODO.md).

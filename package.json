@@ -1,0 +1,68 @@
+{
+    "name": "luku",
+    "version": "1.0.0",
+    "private": true,
+    "description": "LUKU monorepo — Expo mobile client + Express BFF (Phase 2)",
+    "author": "LUKU Team",
+    "license": "MIT",
+    "type": "module",
+    "workspaces": [
+        "apps/*",
+        "packages/*",
+        "backend"
+    ],
+    "scripts": {
+        "dev:mobile": "npm run start --workspace=@luku/mobile",
+        "dev:mobile:clean": "npm run start --workspace=@luku/mobile -- --clear",
+        "dev:api": "npm run dev --workspace=luku-backend",
+        "tunnel:api": "ngrok http 3001",
+        "dev:landing": "npm run dev --prefix landing",
+        "build:landing": "npm run build --prefix landing",
+        "lint:mobile": "npm run lint:check --workspace=@luku/mobile",
+        "typecheck:contracts": "npm run typecheck --workspace=@luku/contracts",
+        "typecheck:backend": "npm run typecheck --workspace=luku-backend",
+        "verify:deps": "node scripts/verify-single-react.mjs",
+        "verify:mobile": "node scripts/verify-mobile-metro-deps.mjs",
+        "verify:no-mobile-supabase": "node scripts/verify-no-mobile-supabase.mjs",
+        "verify:no-direct-mock-imports": "node scripts/verify-no-direct-mock-imports.mjs",
+        "db:introspect": "node scripts/introspect-supabase.mjs",
+        "db:migrate": "node scripts/apply-migrations.mjs",
+        "db:seed": "node scripts/apply-seed.mjs",
+        "verify:gate": "node scripts/verify-platform-gate.mjs",
+        "verify:ai": "node scripts/smoke-ai-endpoints.mjs",
+        "verify:escrow": "node scripts/verify-escrow-migration.mjs",
+        "verify:order-api": "node scripts/smoke-order-api.mjs",
+        "verify:escrow-pass": "node scripts/verify-escrow-pass.mjs",
+        "triage:payments": "node scripts/triage-orphan-payments.mjs",
+        "check:supabase": "node scripts/check-supabase-key.mjs",
+        "diagnose:rls": "node scripts/diagnose-rls.mjs",
+        "test": "vitest run",
+        "test:watch": "vitest --watch",
+        "test:coverage": "vitest run --coverage",
+        "test:ui": "vitest --ui"
+    },
+    "overrides": {
+        
+    },
+    "dependencies": {
+        "@google/genai": "^1.20.0",
+        "@supabase/supabase-js": "2"
+    },
+    "devDependencies": {
+        "@testing-library/dom": "^10.4.1",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
+        "@testing-library/user-event": "^14.6.1",
+        "@types/node": "^22.14.0",
+        "@vitejs/plugin-react": "^5.0.0",
+        "@vitest/coverage-v8": "4.0.18",
+        "@vitest/ui": "4.0.18",
+        "dotenv": "^16.3.1",
+        "jsdom": "^27.4.0",
+        "pg": "^8.13.0",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "typescript": "~5.8.2",
+        "vitest": "4.0.18"
+    }
+}
