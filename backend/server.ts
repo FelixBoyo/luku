@@ -103,6 +103,7 @@ app.post('/webhooks/orders', express.json(), handleOrderWebhook);
 // Larger payload limit for legacy AI route
 app.use('/api/ai', express.json({ limit: '12mb' }));
 
+app.use('/v1/api/ai/try-on', express.json({ limit: '12mb' }));
 // JSON body parser for BFF + payment routes (must run before /v1/api router)
 app.use(express.json());
 

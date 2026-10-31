@@ -125,9 +125,7 @@ const HomeScreen: React.FC<Props> = () => {
         <TabScreenLayout>
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
+               
             >
                 {showOotd && ootd ? (
                     <View style={styles.section}>
@@ -202,7 +200,16 @@ const HomeScreen: React.FC<Props> = () => {
                                 </Pressable>
                                 <Pressable
                                     style={[styles.ootdBtn, styles.tryOnBtn]}
-                                    onPress={() => rootNav.navigate('VirtualTryOn')}
+                                    onPress={() =>
+                                        rootNav.navigate('VirtualTryOn', {
+                                            source: 'ootd',
+                                            outfit: {
+                                                name: ootd.name,
+                                                imageUrl: ootd.imageUrl,
+                                                wardrobeItemIds: ootd.items.map((i) => i.wardrobeItemId),
+                                            },
+                                        })
+                                    }
                                 >
                                     <Camera size={16} color={colors.accent.tryOn} />
                                     <Text style={[styles.ootdBtnText, { color: colors.accent.tryOn }]}>
@@ -264,44 +271,71 @@ const HomeScreen: React.FC<Props> = () => {
                         </View>
 
                         {hero ? (
-                            <Pressable
-                                onPress={() => openProduct(hero.id)}
-                                accessibilityLabel={
-                                    isSoldOut(hero) ? `${hero.name}, sold out` : hero.name
-                                }
-                            >
-                                <View style={styles.hero}>
+                            <View style={styles.hero}>
+                                {/* Product image and image tap */}
+                                <Pressable
+                                    style={StyleSheet.absoluteFill}
+                                    onPress={() => openProduct(hero.id)}
+                                    accessibilityLabel={hero.name}
+                                >
                                     <Image
                                         source={{ uri: hero.imageUrl }}
                                         style={[
                                             styles.heroImage,
-                                            isSoldOut(hero) && { opacity: SOLD_OUT_IMAGE_OPACITY },
+                                            isSoldOut(hero) && {
+                                                opacity: SOLD_OUT_IMAGE_OPACITY,
+                                            },
                                         ]}
                                         contentFit="cover"
                                     />
+
                                     <LinearGradient
                                         colors={['transparent', 'rgba(0,0,0,0.9)']}
                                         style={styles.heroGrad}
                                     />
+
                                     {isSoldOut(hero) ? <SoldOutOverlay /> : null}
+
                                     {hero.aiMatch && !isSoldOut(hero) ? (
                                         <View style={styles.heroMatch}>
                                             <Sparkles size={14} color={colors.text.primary} />
-                                            <Text style={styles.heroMatchText}>{hero.aiMatch}% Match</Text>
+                                            <Text style={styles.heroMatchText}>
+                                                {hero.aiMatch}% Match
+                                            </Text>
                                         </View>
                                     ) : null}
-                                    <View style={styles.heroInfo}>
-                                        <Text style={styles.heroBrand}>{hero.brand}</Text>
-                                        <Text style={styles.heroName}>{hero.name}</Text>
-                                        <Text style={styles.heroReason}>
-                                            Complements your earth-tone wardrobe
-                                        </Text>
-                                        <Text style={styles.heroPrice}>{formatKES(hero.price)}</Text>
-                                    </View>
-                                </View>
-                            </Pressable>
-                        ) : null}
+                                </Pressable>
 
+                                {/* Product details and Try On button */}
+                                <View style={styles.heroInfo}>
+                                    <Text style={styles.heroBrand}>{hero.brand}</Text>
+                                    <Text style={styles.heroName}>{hero.name}</Text>
+
+                                    <Text style={styles.heroReason}>
+                                        Complements your earth-tone wardrobe
+                                    </Text>
+
+                                    <Text style={styles.heroPrice}>
+                                        {formatKES(hero.price)}
+                                    </Text>
+
+                                    {hero.tryOnAvailable && !isSoldOut(hero) ? (
+                                        <Pressable
+                                            style={styles.heroTryOnButton}
+                                            onPress={() =>
+                                                rootNav.navigate('VirtualTryOn', {
+                                                    source: 'marketplace',
+                                                    listingId: hero.id,
+                                                })
+                                            }
+                                        >
+                                            <Camera size={16} color={colors.text.primary} />
+                                            <Text style={styles.heroTryOnText}>Try On</Text>
+                                        </Pressable>
+                                    ) : null}
+                                </View>
+                            </View>
+                        ) : null}
                         <View style={styles.section}>
                             <View style={styles.rowBetween}>
                                 <Text style={styles.sectionTitleSm}>TRENDING NOW</Text>
@@ -321,6 +355,12 @@ const HomeScreen: React.FC<Props> = () => {
                                         product={item}
                                         variant="rail"
                                         onPress={() => openProduct(item.id)}
+                                        onTryOn={() =>
+                                            rootNav.navigate('VirtualTryOn', {
+                                                source: 'marketplace',
+                                                listingId: item.id,
+                                            })
+                                        }
                                     />
                                 ))}
                             </ScrollView>
@@ -335,8 +375,16 @@ const HomeScreen: React.FC<Props> = () => {
                                 {trending.map((item) => (
                                     <View key={item.id} style={styles.gridItem}>
                                         <ProductCard
+                                            key={item.id}
                                             product={item}
+                                            variant="rail"
                                             onPress={() => openProduct(item.id)}
+                                            onTryOn={() =>
+                                                rootNav.navigate('VirtualTryOn', {
+                                                    source: 'marketplace',
+                                                    listingId: item.id,
+                                                })
+                                            }
                                         />
                                     </View>
                                 ))}
@@ -394,6 +442,20 @@ const HomeScreen: React.FC<Props> = () => {
                                                         {item.brand}
                                                     </Text>
                                                     <Text style={styles.morePrice}>{formatKES(item.price)}</Text>
+                                                    {item.tryOnAvailable && !soldOut ? (
+                                                    <Pressable
+                                                            onPress={() =>
+                                                                rootNav.navigate('VirtualTryOn', {
+                                                                    source: 'marketplace',
+                                                                    listingId: item.id,
+                                                                })
+                                                            }
+                                                            style={styles.moreTryOnButton}
+                                                        >
+                                                            <Camera size={13} color={colors.accent.tryOn} />
+                                                            <Text style={styles.moreTryOnText}>Try On</Text>
+                                                        </Pressable>
+                                                    ) : null}
                                                 </View>
                                                 {item.aiMatch && !soldOut ? (
                                                     <View style={styles.moreMatch}>
@@ -668,6 +730,40 @@ const styles = StyleSheet.create({
         color: colors.text.primary,
     },
     moreBookmark: { padding: spacing.sm },
+    heroTryOnButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 10,
+    borderRadius: radii.md,
+    backgroundColor: colors.accent.primary,
+    alignSelf: 'flex-start',
+},
+
+heroTryOnText: {
+    color: colors.text.primary,
+    fontSize: 13,
+    fontWeight: '600',
+},
+moreTryOnButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignSelf: 'flex-start',
+},
+moreTryOnText: {
+    fontFamily: typography.fontFamily.bold,
+    fontSize: 11,
+    color: colors.accent.tryOn,
+},
 });
 
 export default HomeScreen;

@@ -668,9 +668,7 @@ const DiscoverScreen: React.FC<Props> = () => {
                     onEndReachedThreshold={0.35}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.listContent}
-                    refreshControl={
-                        <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
+                
                 />
 
                 <BottomSheet

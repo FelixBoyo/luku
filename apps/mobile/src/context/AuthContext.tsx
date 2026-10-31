@@ -117,16 +117,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         void registerPushToken();
     }, [user]);
 
-    const login = useCallback(async (email: string, password: string) => {
-        const response = await apiPost<SessionDto>(
-            '/v1/api/auth/login',
-            { email, password },
-            false,
-        );
+const login = useCallback(async (email: string, password: string) => {
+    const response = await apiPost<SessionDto>(
+        '/v1/api/auth/login',
+        { email, password },
+        false,
+    );
+    console.warn('[auth] login response keys', Object.keys(response.data ?? {}));
+    try {
         const nextUser = await applySession(response.data);
         await clearPendingVerification();
         setUser(nextUser);
-    }, []);
+        console.warn('[auth] login ok, user set', nextUser.id);
+    } catch (err) {
+        console.warn('[auth] login failed after 200', err);
+        throw err;
+    }
+}, []);
 
     const register = useCallback(
         async (email: string, password: string, displayName: string | undefined, handle: string) => {

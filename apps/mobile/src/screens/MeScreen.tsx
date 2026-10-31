@@ -425,7 +425,6 @@ const moveToWardrobe = async (l: Listing) => {
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scroll}
-                refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             >
                 {profileLoading ? (
                     <ProfileHeaderSkeleton />

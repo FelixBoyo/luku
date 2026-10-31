@@ -26,6 +26,7 @@ import { parseRecoveryToken } from './lib/parseRecoveryToken';
 import { getActivePendingVerification } from './lib/pendingVerification';
 
 const ONBOARDING_KEY = 'luku_onboarding_done';
+const SKIP_ONBOARDING = process.env.EXPO_PUBLIC_SKIP_ONBOARDING === 'true';
 
 const isPasswordResetUrl = (url: string): boolean =>
     url.includes('reset-password') || url.includes('type=recovery');
@@ -35,7 +36,9 @@ const AppRoot: React.FC = () => {
     const [onboardingDone, setOnboardingDone] = useState(false);
     const [devBypass, setDevBypass] = useState(false);
     const [bootLoading, setBootLoading] = useState(true);
-    const [authInitialRoute, setAuthInitialRoute] = useState<keyof AuthStackParamList>('Splash');
+    const [authInitialRoute, setAuthInitialRoute] = useState<keyof AuthStackParamList>(
+        SKIP_ONBOARDING ? 'SignIn' : 'Splash',
+    );
     const [authStackKey, setAuthStackKey] = useState(0);
     const [passwordResetToken, setPasswordResetToken] = useState<string | undefined>();
     const [verifyOtpEmail, setVerifyOtpEmail] = useState<string | undefined>();
@@ -52,6 +55,11 @@ const AppRoot: React.FC = () => {
     });
 
     useEffect(() => {
+        if (SKIP_ONBOARDING) {
+            setOnboardingDone(true);
+            setBootLoading(false);
+            return;
+        }
         AsyncStorage.getItem(ONBOARDING_KEY).then((flag) => {
             setOnboardingDone(flag === 'true');
             setBootLoading(false);

@@ -126,13 +126,15 @@ export const createRepositories = (): Repositories => {
         };
     }
 
-    // Integration mode: one createApi* per shipped domain; createEmpty* for unshipped UI shells.
+    // Create shared repositories first.
+    const wardrobeRepository = createApiWardrobeRepository();
+
     return {
         products: createApiProductsRepository(),
         profile: createApiProfileRepository(),
         connections: createApiConnectionsRepository(),
         userProfile: createApiUserProfileRepository(),
-        wardrobe: createApiWardrobeRepository(),
+        wardrobe: wardrobeRepository,
         wishlist: createApiWishlistRepository(),
         inbox: createApiInboxRepository(),
         outfits: createApiOutfitsRepository(),
@@ -142,9 +144,10 @@ export const createRepositories = (): Repositories => {
         stylist: createApiStylistRepository(),
         wardrobePairings: createApiWardrobePairingsRepository(),
         discoverCatalog: createApiDiscoverCatalogRepository(),
-        home: createApiHomeRepository(),
+        home: createApiHomeRepository(wardrobeRepository),
         notifications: createApiNotificationsRepository(),
     };
 };
+
 
 export const repositories = createRepositories();

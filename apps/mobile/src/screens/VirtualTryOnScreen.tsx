@@ -1,73 +1,283 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Camera,
-    Check,
-    Shirt,
-    Sparkles,
-    Upload,
-    User as UserIcon,
-} from 'lucide-react-native';
+    ActivityIndicator,
+    Linking,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Check, Upload, User as UserIcon } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { ScreenHeader } from '../components/shell/ScreenHeader';
-import { EmptyState } from '../components/common/EmptyState';
 import { repositories } from '../repositories';
-import { getWardrobeItemSync } from '../repositories/wardrobeRepository';
-import type { Outfit } from '../types/domain/outfit';
+import { apiGet, apiPost } from '../api/apiClient';
+import { MANNEQUINS, mannequinToBase64 } from '../lib/mannequins';
+import type { MannequinGender } from '../lib/mannequins';
 import { colors, radii, spacing, typography } from '../theme/tokens';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VirtualTryOn'>;
 type Mode = 'mannequin' | 'upload';
+type Phase = 'idle' | 'working' | 'done' | 'error';
 
-const bodyTypes = ['Petite', 'Slim', 'Athletic', 'Curvy', 'Plus Size'];
-const skinTones = [
-    { label: 'Fair', color: '#F5DEB3' },
-    { label: 'Light', color: '#DEB887' },
-    { label: 'Medium', color: '#C68642' },
-    { label: 'Tan', color: '#A0522D' },
-    { label: 'Deep', color: '#6B3A2A' },
-];
-
-const getOutfitPreviewImages = (outfit: Outfit) => {
-    const images: { name: string; image: string }[] = [];
-    for (const piece of outfit.pieces) {
-        if (piece.type === 'wardrobe') {
-            const item = getWardrobeItemSync(piece.id);
-            if (item) images.push({ name: item.name, image: item.imageUrl });
-        }
-    }
-    if (images.length === 0 && outfit.coverImageUrl) {
-        images.push({ name: outfit.name, image: outfit.coverImageUrl });
-    }
-    return images;
+type TryOnItem = {
+    id: string;
+    source: 'wardrobe' | 'marketplace';
+    name: string;
+    imageUrl: string;
+    category?: string;
+    price?: number;
+    sellerName?: string;
+    sellerWhatsapp?: string;
 };
 
-const VirtualTryOnScreen: React.FC<Props> = ({ navigation }) => {
-    const [mode, setMode] = useState<Mode>('mannequin');
-    const [outfits, setOutfits] = useState<Outfit[]>([]);
-    const [loadingOutfits, setLoadingOutfits] = useState(true);
-    const [selectedOutfit, setSelectedOutfit] = useState<string | null>(null);
-    const [bodyType, setBodyType] = useState('Athletic');
-    const [skinTone, setSkinTone] = useState('Medium');
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const VirtualTryOnScreen: React.FC<Props> = ({ navigation, route }) => {
+    const [mode, setMode] = useState<Mode>('upload');
+    const [gender, setGender] = useState<MannequinGender>('female');
+    const [mannequinId, setMannequinId] = useState('female_average');
+
+    const [catalogue, setCatalogue] = useState<TryOnItem[]>([]);
+    const [pickedItem, setPickedItem] = useState<TryOnItem | null>(null);
+    const [phase, setPhase] = useState<Phase>('idle');
+    const [resultUri, setResultUri] = useState<string | null>(null);
+    const [statusMsg, setStatusMsg] = useState('');
+
+    // Incremented on every new run and every reset, so a stale poll loop stops
+    // instead of writing its result over a different mode or selection.
+    const runIdRef = useRef(0);
+
+    // Garment selection: same three branches as before, but it no longer waits
+    // for 'upload' mode, because Mannequin mode needs the garment too.
     useEffect(() => {
-        setLoadingOutfits(true);
-        repositories.outfits.list('created').then((list) => {
-            setOutfits(list);
-            setSelectedOutfit(list[0]?.id ?? null);
-            setLoadingOutfits(false);
-        });
-    }, []);
+        const loadItems = async () => {
+            try {
+                const params = route.params;
 
-    const activeOutfit = useMemo(
-        () => outfits.find((o) => o.id === selectedOutfit) ?? outfits[0] ?? null,
-        [outfits, selectedOutfit],
-    );
-    const previewImages = activeOutfit ? getOutfitPreviewImages(activeOutfit) : [];
-    const toneColor = skinTones.find((s) => s.label === skinTone)?.color ?? '#C68642';
+                if (!params || params.source === 'standalone') {
+                    setCatalogue([]);
+                    setPickedItem(null);
+                    return;
+                }
+
+                if (params.source === 'wardrobe') {
+                    const item = await repositories.wardrobe.getById(params.itemId);
+
+                    const mapped = [{
+                        id: item.id,
+                        source: 'wardrobe' as const,
+                        name: item.name,
+                        imageUrl: item.imageUrl,
+                        category: item.category,
+                    }];
+
+                    setCatalogue(mapped);
+                    setPickedItem(mapped[0]);
+                }
+
+                if (params.source === 'ootd') {
+                    const wardrobeItems = await repositories.wardrobe.list();
+
+                    const selected = wardrobeItems.filter((item) =>
+                        params.outfit.wardrobeItemIds.includes(item.id),
+                    );
+
+                    const mapped = selected.map((item) => ({
+                        id: item.id,
+                        source: 'wardrobe' as const,
+                        name: item.name,
+                        imageUrl: item.imageUrl,
+                        category: item.category,
+                    }));
+
+                    setCatalogue(mapped);
+                    setPickedItem(mapped[0] ?? null);
+                }
+
+                if (params.source === 'marketplace') {
+                    const product = await repositories.products.getById(params.listingId);
+
+                    if (!product) {
+                        setCatalogue([]);
+                        setPickedItem(null);
+                        return;
+                    }
+
+                    const item: TryOnItem = {
+                        id: product.id,
+                        source: 'marketplace',
+                        name: product.name,
+                        imageUrl: product.imageUrl,
+                        category: product.category,
+                        price: product.price,
+                        sellerName: product.seller?.name,
+                    };
+
+                    setCatalogue([item]);
+                    setPickedItem(item);
+                }
+            } catch (error) {
+                console.error('Failed to load try-on items:', error);
+                setStatusMsg('Could not load items');
+            }
+        };
+
+        loadItems();
+    }, [route.params]);
+
+    const selectedMannequin = MANNEQUINS.find((m) => m.id === mannequinId) ?? MANNEQUINS[0];
+    const genderMannequins = MANNEQUINS.filter((m) => m.gender === gender);
+
+    const resetRun = () => {
+        runIdRef.current += 1;
+        setPhase('idle');
+        setResultUri(null);
+        setStatusMsg('');
+    };
+
+    const switchMode = (next: Mode) => {
+        if (next === mode) return;
+        resetRun();
+        setMode(next);
+    };
+
+    const selectGender = (g: MannequinGender) => {
+        if (g === gender || phase === 'working') return;
+        resetRun();
+        setGender(g);
+        setMannequinId(`${g}_average`);
+    };
+
+    const selectMannequin = (id: string) => {
+        if (phase === 'working') return;
+        resetRun();
+        setMannequinId(id);
+    };
+
+    const selectGarment = (item: TryOnItem) => {
+        if (phase === 'working') return;
+        setPickedItem(item);
+        resetRun();
+    };
+
+    // Shared by My Photo and Mannequin: both send a base64 person image.
+    const runTryOn = async (photoBase64: string, runId: number) => {
+        if (!pickedItem) return;
+        try {
+            setPhase('working');
+            setResultUri(null);
+            setStatusMsg('Dressing you up... about 15 seconds');
+            console.log('[TRY-ON] Debug:', {
+                itemId: pickedItem.id,
+                source: pickedItem.source,
+                hasPhotoBase64: !!photoBase64,
+                photoBase64Length: photoBase64.length,
+            });
+            const start = await apiPost<{ taskId: string }>(
+                '/v1/api/ai/try-on',
+                {
+                    itemId: pickedItem.id,
+                    source: pickedItem.source,
+                    photoBase64,
+                },
+                true,
+                60000,
+            );
+            if (runIdRef.current !== runId) return;
+            const taskId = start.data?.taskId;
+            if (!taskId) throw new Error('No task id returned');
+            for (let i = 0; i < 30; i++) {
+                await sleep(3000);
+                if (runIdRef.current !== runId) return;
+                const poll = await apiGet<{
+                    status: string;
+                    imageDataUri?: string;
+                    error?: string;
+                }>(`/v1/api/ai/try-on/${taskId}`);
+                if (runIdRef.current !== runId) return;
+                const d = poll.data;
+                if (d?.status === 'success' && d.imageDataUri) {
+                    setResultUri(d.imageDataUri);
+                    setPhase('done');
+                    return;
+                }
+                if (d?.status === 'error') throw new Error(d.error || 'Try-on failed');
+            }
+            throw new Error('Took too long, please try again');
+        } catch (e: any) {
+            if (runIdRef.current !== runId) return;
+            setStatusMsg(e?.message || 'Something went wrong');
+            setPhase('error');
+        }
+    };
+
+    // My Photo: same steps as before (permission, picker, base64, run).
+    const choosePhotoAndTryOn = async () => {
+        if (!pickedItem || phase === 'working') return;
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+            setStatusMsg('Photo access is needed.');
+            setPhase('error');
+            return;
+        }
+        const picked = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.5,
+            base64: true,
+        });
+        if (picked.canceled) return;
+        const photoBase64 = picked.assets[0].base64;
+        if (!photoBase64) {
+            setStatusMsg('Could not read that photo, try another one.');
+            setPhase('error');
+            return;
+        }
+        const runId = ++runIdRef.current;
+        await runTryOn(photoBase64, runId);
+    };
+
+    // Mannequin: convert the bundled image to base64, then reuse runTryOn.
+    const tryOnMannequin = async () => {
+        if (!pickedItem || phase === 'working') return;
+        const runId = ++runIdRef.current;
+        try {
+            setPhase('working');
+            setResultUri(null);
+            setStatusMsg('Preparing mannequin...');
+            const photoBase64 = await mannequinToBase64(selectedMannequin);
+            if (runIdRef.current !== runId) return;
+            await runTryOn(photoBase64, runId);
+        } catch (e: any) {
+            if (runIdRef.current !== runId) return;
+            setStatusMsg(e?.message || 'Could not prepare the mannequin image');
+            setPhase('error');
+        }
+    };
+
+    const messageSeller = () => {
+        if (!pickedItem?.sellerWhatsapp) return;
+        const text = encodeURIComponent(
+            `Hi, I'm interested in the ${pickedItem.name} I saw on LUKU.`,
+        );
+        Linking.openURL(`https://wa.me/${pickedItem.sellerWhatsapp}?text=${text}`);
+    };
+
+    const whatsappButton =
+        phase === 'done' && pickedItem?.sellerWhatsapp ? (
+            <Pressable
+                onPress={messageSeller}
+                style={[styles.whatsappBtn, { marginHorizontal: spacing.lg, marginBottom: spacing.lg }]}
+            >
+                <Text style={styles.choosePhotoText}>
+                    Message {pickedItem.sellerName ?? 'seller'} on WhatsApp
+                </Text>
+            </Pressable>
+        ) : null;
 
     return (
         <View style={styles.container}>
@@ -80,7 +290,7 @@ const VirtualTryOnScreen: React.FC<Props> = ({ navigation }) => {
                         return (
                             <Pressable
                                 key={m}
-                                onPress={() => setMode(m)}
+                                onPress={() => switchMode(m)}
                                 style={[styles.modeBtn, active && styles.modeBtnActive]}
                             >
                                 <Icon
@@ -98,151 +308,179 @@ const VirtualTryOnScreen: React.FC<Props> = ({ navigation }) => {
 
                 <View style={styles.previewCard}>
                     {mode === 'mannequin' ? (
-                        activeOutfit ? (
-                        <>
-                            <View style={styles.preview}>
-                                <LinearGradient
-                                    colors={['rgba(138,72,205,0.1)', 'transparent', 'rgba(0,0,0,0.4)']}
-                                    style={StyleSheet.absoluteFill}
-                                />
-                                <View style={styles.aiBadge}>
-                                    <Sparkles color={colors.accent.primary} size={12} strokeWidth={2.5} />
-                                    <Text style={styles.aiBadgeText}>AI Preview</Text>
-                                </View>
-                                <View style={styles.silhouette}>
-                                    <View style={[styles.head, { backgroundColor: toneColor }]}>
-                                        <UserIcon color="rgba(255,255,255,0.4)" size={28} strokeWidth={1.5} />
+                        <View>
+                            <View style={styles.stage}>
+                                {phase === 'done' && resultUri ? (
+                                    <Image source={{ uri: resultUri }} style={styles.stageImg} contentFit="contain" />
+                                ) : (
+                                    <Image source={selectedMannequin.source} style={styles.stageImg} contentFit="contain" />
+                                )}
+                                {phase === 'working' ? (
+                                    <View style={styles.stageOverlay}>
+                                        <ActivityIndicator color={colors.accent.primary} />
+                                        <Text style={styles.uploadSub}>{statusMsg}</Text>
                                     </View>
-                                    <View style={styles.itemStack}>
-                                        {previewImages.map((it) => (
-                                            <View key={it.name} style={styles.stackItem}>
-                                                <Image source={{ uri: it.image }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                                            </View>
-                                        ))}
-                                    </View>
-                                </View>
-                                <View style={styles.outfitNameBox}>
-                                    <Text style={styles.outfitName}>{activeOutfit.name}</Text>
-                                    <Text style={styles.outfitMeta}>
-                                        {activeOutfit.occasion} · {activeOutfit.pieces.length} pieces
+                                ) : null}
+                            </View>
+                            {phase === 'error' ? (
+                                <Text style={[styles.errorText, { padding: spacing.lg }]}>{statusMsg}</Text>
+                            ) : null}
+                            {phase !== 'working' ? (
+                                <Pressable
+                                    onPress={tryOnMannequin}
+                                    disabled={!pickedItem}
+                                    style={[
+                                        styles.choosePhoto,
+                                        { margin: spacing.lg },
+                                        !pickedItem && styles.choosePhotoDisabled,
+                                    ]}
+                                >
+                                    <Text style={[styles.choosePhotoText, { textAlign: 'center' }]}>
+                                        {phase === 'done' ? 'Try again' : 'Try on this mannequin'}
                                     </Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.customize}>
-                                <Text style={styles.customizeLabel}>Customise</Text>
-                                <Text style={styles.fieldLabel}>Body Type</Text>
-                                <View style={styles.chipRow}>
-                                    {bodyTypes.map((bt) => {
-                                        const active = bodyType === bt;
-                                        return (
-                                            <Pressable
-                                                key={bt}
-                                                onPress={() => setBodyType(bt)}
-                                                style={[styles.bodyChip, active && styles.bodyChipActive]}
-                                            >
-                                                <Text style={[styles.bodyChipText, active && styles.bodyChipTextActive]}>
-                                                    {bt}
-                                                </Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
-                                <Text style={[styles.fieldLabel, { marginTop: spacing.md }]}>Skin Tone</Text>
-                                <View style={styles.toneRow}>
-                                    {skinTones.map((st) => {
-                                        const active = skinTone === st.label;
-                                        return (
-                                            <Pressable
-                                                key={st.label}
-                                                onPress={() => setSkinTone(st.label)}
-                                                style={[
-                                                    styles.toneDot,
-                                                    { backgroundColor: st.color, borderColor: active ? '#fff' : 'transparent' },
-                                                ]}
-                                            >
-                                                {active ? (
-                                                    <Check color="#fff" size={14} strokeWidth={3} />
-                                                ) : null}
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-                        </>
-                        ) : (
-                            <EmptyState
-                                icon={Shirt}
-                                title="No outfits to try on"
-                                description="Create an outfit first to preview it here"
-                            />
-                        )
+                                </Pressable>
+                            ) : null}
+                            {whatsappButton}
+                            <Text style={[styles.uploadHint, { alignSelf: 'center', paddingBottom: spacing.lg }]}>
+                                Preset model. Fit on your own body may differ.
+                            </Text>
+                        </View>
                     ) : (
-                        <View style={styles.uploadArea}>
-                            <View style={styles.uploadIcon}>
-                                <Camera color="rgba(255,255,255,0.4)" size={32} strokeWidth={1.5} />
-                            </View>
-                            <Text style={styles.uploadTitle}>Upload Your Photo</Text>
-                            <Text style={styles.uploadSub}>See how outfits look on you</Text>
-                            <View style={[styles.choosePhoto, styles.choosePhotoDisabled]}>
-                                <Text style={styles.choosePhotoText}>Choose Photo</Text>
-                            </View>
-                            <Text style={styles.uploadHint}>
-                                Photo upload coming soon — photos will be processed locally
+                        <View>
+                            {phase === 'done' && resultUri ? (
+                                <Image source={{ uri: resultUri }} style={styles.resultImg} contentFit="contain" />
+                            ) : (
+                                <View style={styles.uploadArea}>
+                                    {phase === 'working' ? (
+                                        <>
+                                            <ActivityIndicator color={colors.accent.primary} />
+                                            <Text style={styles.uploadSub}>{statusMsg}</Text>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <View style={styles.uploadIcon}>
+                                                <Camera color="rgba(255,255,255,0.4)" size={32} strokeWidth={1.5} />
+                                            </View>
+                                            <Text style={styles.uploadTitle}>Upload Your Photo</Text>
+                                            <Text style={styles.uploadSub}>
+                                                Stand facing the camera, alone, with your face visible
+                                            </Text>
+                                            {phase === 'error' ? (
+                                                <Text style={styles.errorText}>{statusMsg}</Text>
+                                            ) : null}
+                                        </>
+                                    )}
+                                </View>
+                            )}
+                            {phase !== 'working' ? (
+                                <Pressable
+                                    onPress={choosePhotoAndTryOn}
+                                    disabled={!pickedItem}
+                                    style={[
+                                        styles.choosePhoto,
+                                        { margin: spacing.lg },
+                                        !pickedItem && styles.choosePhotoDisabled,
+                                    ]}
+                                >
+                                    <Text style={[styles.choosePhotoText, { textAlign: 'center' }]}>
+                                        {phase === 'done' ? 'Try another photo' : 'Choose Photo'}
+                                    </Text>
+                                </Pressable>
+                            ) : null}
+                            {whatsappButton}
+                            <Text style={[styles.uploadHint, { alignSelf: 'center', paddingBottom: spacing.lg }]}>
+                                Your photo is used only to create this preview.
                             </Text>
                         </View>
                     )}
                 </View>
 
+                {mode === 'mannequin' ? (
+                    <View style={styles.selector}>
+                        <Text style={styles.selectorLabel}>Model</Text>
+                        <View style={styles.genderRow}>
+                            {(['female', 'male'] as MannequinGender[]).map((g) => {
+                                const active = gender === g;
+                                return (
+                                    <Pressable
+                                        key={g}
+                                        onPress={() => selectGender(g)}
+                                        style={[styles.genderChip, active && styles.genderChipActive]}
+                                    >
+                                        <Text style={[styles.genderChipText, active && styles.genderChipTextActive]}>
+                                            {g === 'female' ? 'Female' : 'Male'}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                        <View style={styles.mannequinGrid}>
+                            {genderMannequins.map((m) => {
+                                const active = m.id === mannequinId;
+                                return (
+                                    <Pressable
+                                        key={m.id}
+                                        onPress={() => selectMannequin(m.id)}
+                                        style={[styles.mannequinThumb, active && styles.mannequinThumbActive]}
+                                    >
+                                        <Image source={m.source} style={styles.mannequinThumbImg} contentFit="cover" />
+                                        {active ? (
+                                            <View style={styles.mannequinCheck}>
+                                                <Check color={colors.text.primary} size={12} strokeWidth={3} />
+                                            </View>
+                                        ) : null}
+                                        <Text
+                                            style={[
+                                                styles.mannequinThumbLabel,
+                                                active && styles.mannequinThumbLabelActive,
+                                            ]}
+                                        >
+                                            {m.label}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                    </View>
+                ) : null}
+
                 <View style={styles.selector}>
-                    <Text style={styles.selectorLabel}>Select Outfit</Text>
-                    {loadingOutfits ? (
-                        <ActivityIndicator color={colors.accent.primary} style={styles.loader} />
-                    ) : outfits.length === 0 ? (
-                        <EmptyState
-                            icon={Shirt}
-                            title="No saved outfits"
-                            description="Your created outfits will appear here"
-                        />
+                    <Text style={styles.selectorLabel}>Select Item</Text>
+                    {catalogue.length === 0 ? (
+                        <Text style={styles.emptyHint}>
+                            Open Try-On from a product, wardrobe item or outfit to choose a garment.
+                        </Text>
                     ) : (
-                    outfits.map((outfit) => {
-                        const active = selectedOutfit === outfit.id;
-                        const thumbs = getOutfitPreviewImages(outfit);
-                        return (
-                            <Pressable
-                                key={outfit.id}
-                                onPress={() => setSelectedOutfit(outfit.id)}
-                                style={[styles.outfitRow, active && styles.outfitRowActive]}
-                            >
-                                <View style={styles.thumbStack}>
-                                    {thumbs.slice(0, 3).map((it, i) => (
-                                        <Image
-                                            key={it.name + i}
-                                            source={{ uri: it.image }}
-                                            style={[styles.stackThumb, { marginLeft: i === 0 ? 0 : -8 }]}
-                                            contentFit="cover"
-                                        />
-                                    ))}
-                                    {outfit.pieces.length > 3 ? (
-                                        <View style={[styles.stackThumb, styles.stackMore, { marginLeft: -8 }]}>
-                                            <Text style={styles.stackMoreText}>+{outfit.pieces.length - 3}</Text>
+                        catalogue.map((item) => {
+                            const active = pickedItem?.id === item.id;
+                            return (
+                                <Pressable
+                                    key={item.id}
+                                    onPress={() => selectGarment(item)}
+                                    style={[styles.outfitRow, active && styles.outfitRowActive]}
+                                >
+                                    <Image
+                                        source={{ uri: item.imageUrl }}
+                                        style={styles.stackThumb}
+                                        contentFit="cover"
+                                    />
+                                    <View style={styles.flex}>
+                                        <Text style={styles.outfitRowName}>{item.name}</Text>
+                                        <Text style={styles.outfitRowMeta}>
+                                            {item.price != null
+                                                ? `KES ${Number(item.price).toLocaleString('en-KE')}`
+                                                : 'Price unavailable'}
+                                            {item.sellerName ? ` · ${item.sellerName}` : ''}
+                                        </Text>
+                                    </View>
+                                    {active ? (
+                                        <View style={styles.checkCircle}>
+                                            <Check color={colors.text.primary} size={12} strokeWidth={3} />
                                         </View>
                                     ) : null}
-                                </View>
-                                <View style={styles.flex}>
-                                    <Text style={styles.outfitRowName}>{outfit.name}</Text>
-                                    <Text style={styles.outfitRowMeta}>
-                                        {outfit.occasion} · {outfit.pieces.length} pieces
-                                    </Text>
-                                </View>
-                                {active ? (
-                                    <View style={styles.checkCircle}>
-                                        <Check color={colors.text.primary} size={12} strokeWidth={3} />
-                                    </View>
-                                ) : null}
-                            </Pressable>
-                        );
-                    })
+                                </Pressable>
+                            );
+                        })
                     )}
                 </View>
             </ScrollView>
@@ -253,7 +491,6 @@ const VirtualTryOnScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background.shell },
     scroll: { padding: spacing.page, paddingBottom: spacing.xxl, gap: spacing.lg },
-    loader: { paddingVertical: spacing.xl },
     flex: { flex: 1 },
     modeToggle: {
         flexDirection: 'row',
@@ -289,120 +526,23 @@ const styles = StyleSheet.create({
         borderColor: colors.border.dark,
         backgroundColor: 'rgba(255,255,255,0.03)',
     },
-    preview: { aspectRatio: 3 / 4, alignItems: 'center', justifyContent: 'center' },
-    aiBadge: {
-        position: 'absolute',
-        top: spacing.lg,
-        left: spacing.lg,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: spacing.md,
-        paddingVertical: 4,
-        borderRadius: radii.pill,
-        backgroundColor: 'rgba(72,205,138,0.2)',
-        borderWidth: 1,
-        borderColor: 'rgba(72,205,138,0.3)',
-    },
-    aiBadgeText: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 10,
-        color: colors.accent.primary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    silhouette: { alignItems: 'center' },
-    head: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
+    stage: { position: 'relative' },
+    stageImg: { width: '100%', aspectRatio: 3 / 4 },
+    stageOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.55)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.md,
+        gap: spacing.md,
+        padding: spacing.xl,
     },
-    itemStack: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: spacing.sm,
-        maxWidth: 240,
-    },
-    stackItem: {
-        width: 64,
-        height: 64,
-        borderRadius: radii.md,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
-    },
-    outfitNameBox: {
-        position: 'absolute',
-        bottom: spacing.lg,
-        left: spacing.lg,
-        right: spacing.lg,
-        padding: spacing.md,
-        borderRadius: radii.lg,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        borderWidth: 1,
-        borderColor: colors.border.dark,
-    },
-    outfitName: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 14,
-        color: colors.text.onDark,
-    },
-    outfitMeta: {
-        fontFamily: typography.fontFamily.semiBold,
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
-    },
-    customize: {
-        padding: spacing.lg,
-        borderTopWidth: 1,
-        borderTopColor: colors.border.dark,
-    },
-    customizeLabel: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 10,
-        color: 'rgba(255,255,255,0.5)',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-        marginBottom: spacing.md,
-    },
-    fieldLabel: {
-        fontFamily: typography.fontFamily.semiBold,
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.4)',
-        marginBottom: spacing.sm,
-    },
-    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-    bodyChip: {
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: radii.md,
-        borderWidth: 1,
-        borderColor: colors.border.dark,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-    },
-    bodyChipActive: { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary },
-    bodyChipText: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 11,
-        color: 'rgba(255,255,255,0.6)',
-    },
-    bodyChipTextActive: { color: colors.text.primary },
-    toneRow: { flexDirection: 'row', gap: spacing.md },
-    toneDot: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        borderWidth: 2,
+    uploadArea: {
+        aspectRatio: 3 / 4,
         alignItems: 'center',
         justifyContent: 'center',
+        gap: spacing.md,
+        padding: spacing.xl,
     },
-    uploadArea: { aspectRatio: 3 / 4, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
     uploadIcon: {
         width: 64,
         height: 64,
@@ -421,7 +561,8 @@ const styles = StyleSheet.create({
     uploadSub: {
         fontFamily: typography.fontFamily.semiBold,
         fontSize: 13,
-        color: 'rgba(255,255,255,0.4)',
+        color: 'rgba(255,255,255,0.6)',
+        textAlign: 'center',
     },
     choosePhoto: {
         backgroundColor: colors.accent.primary,
@@ -442,7 +583,15 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: 'rgba(255,255,255,0.25)',
         textAlign: 'center',
-        maxWidth: 200,
+        maxWidth: 220,
+    },
+    resultImg: { width: '100%', aspectRatio: 3 / 4 },
+    errorText: { color: '#ff6b6b', fontSize: 12, textAlign: 'center' },
+    whatsappBtn: {
+        backgroundColor: '#25D366',
+        padding: spacing.md,
+        borderRadius: radii.lg,
+        alignItems: 'center',
     },
     selector: {},
     selectorLabel: {
@@ -452,6 +601,60 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginBottom: spacing.md,
+    },
+    emptyHint: {
+        fontFamily: typography.fontFamily.semiBold,
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.4)',
+    },
+    genderRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+    genderChip: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: spacing.sm,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        borderColor: colors.border.dark,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+    },
+    genderChipActive: { backgroundColor: colors.accent.primary, borderColor: colors.accent.primary },
+    genderChipText: {
+        fontFamily: typography.fontFamily.black,
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.6)',
+        textTransform: 'uppercase',
+    },
+    genderChipTextActive: { color: colors.text.primary },
+    mannequinGrid: { flexDirection: 'row', gap: spacing.sm },
+    mannequinThumb: {
+        flex: 1,
+        borderRadius: radii.lg,
+        overflow: 'hidden',
+        borderWidth: 2,
+        borderColor: colors.border.dark,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+    },
+    mannequinThumbActive: { borderColor: colors.accent.primary },
+    mannequinThumbImg: { width: '100%', aspectRatio: 3 / 4 },
+    mannequinThumbLabel: {
+        fontFamily: typography.fontFamily.black,
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.6)',
+        textAlign: 'center',
+        paddingVertical: spacing.sm,
+        textTransform: 'uppercase',
+    },
+    mannequinThumbLabelActive: { color: colors.accent.primary },
+    mannequinCheck: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: colors.accent.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     outfitRow: {
         flexDirection: 'row',
@@ -468,23 +671,12 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(72,205,138,0.4)',
         backgroundColor: 'rgba(72,205,138,0.06)',
     },
-    thumbStack: { flexDirection: 'row' },
     stackThumb: {
         width: 36,
         height: 36,
         borderRadius: radii.md,
         borderWidth: 2,
         borderColor: colors.background.shell,
-    },
-    stackMore: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    stackMoreText: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 10,
-        color: colors.text.onDark,
     },
     outfitRowName: {
         fontFamily: typography.fontFamily.black,
@@ -503,68 +695,6 @@ const styles = StyleSheet.create({
         backgroundColor: colors.accent.primary,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    completeCard: {
-        padding: spacing.lg,
-        borderRadius: radii.xl,
-        borderWidth: 1,
-        borderColor: colors.border.dark,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-    },
-    completeHead: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.md,
-    },
-    completeLabel: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 10,
-        color: 'rgba(255,255,255,0.5)',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    shopAll: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 10,
-        color: '#F2B872',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    completeRow: { flexDirection: 'row', gap: spacing.md },
-    completeItem: {
-        flex: 1,
-        borderRadius: radii.lg,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: colors.border.dark,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-    },
-    completeImgWrap: { aspectRatio: 1 },
-    bagBtn: {
-        position: 'absolute',
-        bottom: 6,
-        right: 6,
-        width: 28,
-        height: 28,
-        borderRadius: radii.md,
-        backgroundColor: '#F2B872',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    completeName: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 11,
-        color: colors.text.onDark,
-        paddingHorizontal: spacing.sm,
-        paddingTop: spacing.sm,
-    },
-    completePrice: {
-        fontFamily: typography.fontFamily.black,
-        fontSize: 11,
-        color: '#F2B872',
-        paddingHorizontal: spacing.sm,
-        paddingBottom: spacing.sm,
     },
 });
 

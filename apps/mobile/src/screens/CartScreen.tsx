@@ -588,13 +588,7 @@ const CartScreen: React.FC<Props> = ({ navigation }) => {
             <ScrollView
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
-                refreshControl={
-                    // Cart only; pulling mid-checkout could swap the lines under
-                    // a charge that is already in flight.
-                    step === 'cart' ? (
-                        <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    ) : undefined
-                }
+               
             >
                 {step === 'cart' ? (
                     <>

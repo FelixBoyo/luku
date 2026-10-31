@@ -28,7 +28,27 @@ export const dtoToDisplayProduct = (p: ProductDto): Product => ({
     color: p.color,
     size: p.size,
     stockQuantity: p.stockQuantity,
-});
 
-/** @deprecated Use toDisplayProduct */
-export const mockToDisplayProduct = toDisplayProduct;
+    // Enable virtual try-on for supported clothing categories
+    tryOnAvailable: [
+        'tops',
+        'top',
+        'shirts',
+        'shirt',
+        't-shirts',
+        'tshirt',
+        'outerwear',
+        'jackets',
+        'jacket',
+        'coats',
+        'coat',
+        'bottoms',
+        'trousers',
+        'pants',
+        'jeans',
+        'shorts',
+        'skirts',
+        'dress',
+        'dresses',
+    ].includes(String(p.category ?? '').trim().toLowerCase()),
+});

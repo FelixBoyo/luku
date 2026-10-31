@@ -328,7 +328,12 @@ const WardrobeItemDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     <View style={styles.actions}>
                         <Pressable
                             style={styles.tryOnBtn}
-                            onPress={() => navigation.navigate('VirtualTryOn')}
+                            onPress={() =>
+                                navigation.navigate('VirtualTryOn', {
+                                    source: 'wardrobe',
+                                    itemId: item.id,
+                                })
+                            }
                         >
                             <Calendar size={16} color={colors.accent.tryOn} strokeWidth={2.5} />
                             <Text style={styles.tryOnText}>Try On</Text>

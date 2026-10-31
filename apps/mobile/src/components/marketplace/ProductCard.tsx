@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Sparkles } from 'lucide-react-native';
+import { Sparkles,Camera } from 'lucide-react-native';
 import { formatKES } from '../../lib/format';
 import { isSoldOut } from '../../lib/stock';
 import { colors, radii, spacing, typography } from '../../theme/tokens';
@@ -13,12 +13,13 @@ import { SoldOutOverlay, SOLD_OUT_IMAGE_OPACITY } from './SoldOutOverlay';
 type ProductCardProps = {
     product: Product;
     onPress: () => void;
+    onTryOn?: () => void;
     variant?: 'grid' | 'rail';
 };
-
 export const ProductCard: React.FC<ProductCardProps> = ({
     product,
     onPress,
+    onTryOn,
     variant = 'grid',
 }) => {
     const { user } = useAuth();
@@ -26,6 +27,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     // dimming and badge are what stop the item reading as buyable.
     const soldOut = isSoldOut(product);
     const isOwn = Boolean(user?.id && product.seller.id === user.id);
+    
 
     return (
         <Pressable
@@ -72,6 +74,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     {product.brand}
                 </Text>
                 <Text style={styles.price}>{formatKES(product.price)}</Text>
+
+                {product.tryOnAvailable && onTryOn && (
+                    <Pressable
+                        onPress={onTryOn}
+                        style={styles.tryOnButton}
+                    >
+                        <Camera size={14} color={colors.accent.tryOn} />
+                        <Text style={styles.tryOnText}>Try On</Text>
+                    </Pressable>
+                )}
             </View>
         </Pressable>
     );
@@ -139,4 +151,20 @@ const styles = StyleSheet.create({
         color: colors.accent.primary,
         marginTop: 2,
     },
+    tryOnButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginTop: 8,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+},
+
+tryOnText: {
+    color: colors.accent.tryOn,
+    fontSize: 12,
+    fontWeight: '600',
+},
 });

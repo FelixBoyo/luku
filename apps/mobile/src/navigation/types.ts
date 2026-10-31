@@ -48,6 +48,26 @@ export type MeStackParamList = {
     SavedOutfits: { initialTab?: 'created' | 'inspirations' } | undefined;
     Commerce: { initialTab?: 'listings' | 'purchases' | 'sales' } | undefined;
 };
+export type VirtualTryOnParams =
+    | {
+          source: 'wardrobe';
+          itemId: string;
+      }
+    | {
+          source: 'ootd';
+          outfit: {
+              name: string;
+              imageUrl: string;
+              wardrobeItemIds: string[];
+          };
+      }
+    | {
+          source: 'marketplace';
+          listingId: string;
+      }
+    | {
+          source: 'standalone';
+      };
 
 export type MainTabParamList = {
     Home: NavigatorScreenParams<HomeStackParamList>;
@@ -69,7 +89,7 @@ export type RootStackParamList = {
     Trending: undefined;
     Wardrobe: undefined;
     WardrobePairings: undefined;
-    VirtualTryOn: undefined;
+    VirtualTryOn: VirtualTryOnParams | undefined;
     Payment: undefined;
     OrderConfirmation: { orderId: string };
     Help: undefined;

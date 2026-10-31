@@ -63,11 +63,13 @@ export const useActiveProducts = (query?: ProductListQuery) => {
                 page: targetPage,
                 limit: parsedQuery.limit ?? 50,
             });
+            console.log('[products] listActive returned', result.items.length, 'items; first:', JSON.stringify(result.items[0], null, 2));
             
             setProducts(prev => reset ? result.items : [...prev, ...result.items]);
             setPage(targetPage);
             setHasMore(targetPage < result.pagination.pages);
         } catch (e) {
+                console.log('[products] listActive FAILED', e);
             setError(e instanceof Error ? e.message : 'Failed to load products');
         } finally {
             setLoading(false);

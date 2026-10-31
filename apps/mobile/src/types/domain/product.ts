@@ -39,6 +39,7 @@ export type Product = {
     size?: string;
     reviews?: Review[];
     stockQuantity?: number;
+    tryOnAvailable?: boolean;
 };
 
 /** @deprecated Use Product */
