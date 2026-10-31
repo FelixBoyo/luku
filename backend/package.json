@@ -24,6 +24,8 @@
 
   "dependencies": {
 
+    "@google/genai": "^2.32.0",
+
     "@supabase/supabase-js": "2",
 
     "cors": "^2.8.5",

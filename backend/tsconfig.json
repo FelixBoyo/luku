@@ -11,6 +11,15 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../packages/contracts/src/**/*.ts", "../core/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "./**/*.ts",
+    "../packages/contracts/src/**/*.ts",
+    "../core/validation.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
