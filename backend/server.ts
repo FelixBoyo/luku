@@ -12,7 +12,7 @@
 
 // Must stay first: this import loads .env / .env.local, and every module body
 // below is evaluated before any statement in this file runs.
-import { loadServerEnv } from './config/loadEnv';
+import { loadServerEnv } from './config/loadEnv.js';
 
 import express from 'express';
 import cors from 'cors';

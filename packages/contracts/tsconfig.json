@@ -9,5 +9,16 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src/**/*.ts"]
+    "include": [
+    "./**/*.ts",
+    "../packages/contracts/src/**/*.ts",
+    "../core/validation.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "scratch-test-payout.ts"
+  ]
 }
