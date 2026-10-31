@@ -18,7 +18,7 @@ import express from 'express';
 import cors from 'cors';
 
 // Import API handlers
-import { getPaymentsConfig } from './handlers/payments/config';
+import { getPaymentsConfig } from './handlers/payments/config.js';
 import { createPaystackCharge } from './handlers/payments/paystack/charges';
 import { startPaystackMpesaCheckout } from './handlers/payments/mpesa/stk-push';
 import { mapMpesaStkPushError } from './handlers/payments/mpesa/errors';
