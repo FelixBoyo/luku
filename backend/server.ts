@@ -133,6 +133,54 @@ app.use(
 app.get('/health', (_req, res) => {
     res.json({ status: 'ok', requestId: res.locals.requestId });
 });
+// TEMPORARY: remove after debugging. Reports presence/shape of env vars, never values.
+app.get('/debug/env-check', async (_req, res) => {
+    const names = [
+        'SUPABASE_URL',
+        'VITE_SUPABASE_URL',
+        'SUPABASE_SERVICE_ROLE_KEY',
+        'YOUCAM_API_KEY',
+        'GEMINI_API_KEY',
+    ];
+    const shape = (v?: string) =>
+        v === undefined
+            ? { present: false }
+            : {
+                  present: true,
+                  length: v.length,
+                  hasWhitespace: /\s/.test(v),
+                  hasQuotes: /^["']|["']$/.test(v),
+                  endsWithSlash: v.endsWith('/'),
+              };
+    const vars: Record<string, unknown> = {};
+    for (const n of names) vars[n] = shape(process.env[n]);
+
+    const rawUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '';
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+    let host: string | null = null;
+    try {
+        host = new URL(rawUrl).host;
+    } catch {
+        host = 'INVALID_URL';
+    }
+
+    let probe: Record<string, unknown>;
+    try {
+        const r = await fetch(`${rawUrl.replace(/\/+$/, '')}/auth/v1/health`, {
+            headers: { apikey: key },
+        });
+        probe = { ok: true, status: r.status };
+    } catch (e: any) {
+        probe = {
+            ok: false,
+            message: e?.message,
+            causeCode: e?.cause?.code,
+            causeMessage: e?.cause?.message,
+        };
+    }
+
+    res.json({ vars, urlHost: host, probe, onVercel: Boolean(process.env.VERCEL) });
+});
 
 /**
  * Answers "can this process write payments?" without charging anyone. The key
