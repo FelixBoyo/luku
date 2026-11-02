@@ -415,12 +415,15 @@ app.get(
 );
 
 // Start background timers
-startTimers();
-
+if (!process.env.VERCEL) {
+    startTimers();
+}
 // Start server
-app.listen(PORT, () => {
-    console.log(`Backend API server running on http://localhost:${PORT}`);
-    console.log(`Payments mode: ${paymentsEnv.mode}`);
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`Backend API server running on http://localhost:${PORT}`);
+        console.log(`Payments mode: ${paymentsEnv.mode}`);
+
 
     const envFiles = envLoad.files
         .map((f) => `${f.file} ${f.found ? 'loaded' : 'not found'}`)
@@ -450,3 +453,5 @@ app.listen(PORT, () => {
     console.log(`  POST http://localhost:${PORT}/webhooks/paystack`);
     console.log(`\nMake sure your frontend is configured to use these endpoints.`);
 });
+}
+export default app;
