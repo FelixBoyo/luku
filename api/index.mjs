@@ -77766,7 +77766,7 @@ var init_supabaseAdmin = __esm({
       anonClient = (0, import_supabase_js.createClient)(url, anonKey, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: {
-          fetch: withSupabaseFetchTimeout(fetch, resetSupabaseAdmin)
+          fetch: withSupabaseFetchTimeout(import_undici.fetch, resetSupabaseAdmin)
         }
       });
       return anonClient;

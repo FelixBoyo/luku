@@ -250,7 +250,7 @@ export const getSupabaseAnon = (): SupabaseClient => {
     anonClient = createClient(url, anonKey, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: {
-            fetch: withSupabaseFetchTimeout(fetch, resetSupabaseAdmin),
+            fetch: withSupabaseFetchTimeout(undiciFetch as unknown as typeof fetch, resetSupabaseAdmin),
         },
     });
     return anonClient;
