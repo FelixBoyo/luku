@@ -29,6 +29,13 @@ import type { LoginUnconfirmedDto } from '../../../../../packages/contracts/src/
 const BG =
     'https://images.unsplash.com/photo-1621804174943-fc6d0f06ef1c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080';
 
+/**
+ * Review/test builds: only the email/username + password form is shown.
+ * Inlined at build time from EXPO_PUBLIC_LOGIN_ONLY (set in eas.json).
+ * Authentication itself is unchanged and still verified by the backend.
+ */
+const LOGIN_ONLY = process.env.EXPO_PUBLIC_LOGIN_ONLY === 'true';
+
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignIn'>;
 
 const SignInScreen: React.FC<Props> = ({ navigation }) => {
@@ -56,6 +63,14 @@ const SignInScreen: React.FC<Props> = ({ navigation }) => {
             await login(loginValue, password);
         } catch (error) {
             if (error instanceof ApiError && error.errorCode === 'AUTH_EMAIL_UNCONFIRMED') {
+                // Login-only builds have no verification screen, so just explain.
+                if (LOGIN_ONLY) {
+                    setInfoDialog({
+                        title: 'Account not verified',
+                        description: 'This account has not been verified yet.',
+                    });
+                    return;
+                }
                 const payload = error.data as LoginUnconfirmedDto | undefined;
                 const otpEmail =
                     payload?.email ??
@@ -87,13 +102,15 @@ const SignInScreen: React.FC<Props> = ({ navigation }) => {
                 colors={['rgba(0,0,0,0.35)', 'transparent', 'rgba(0,0,0,0.95)']}
                 style={StyleSheet.absoluteFill}
             />
-            <Pressable
-                style={styles.back}
-                onPress={() => navigation.navigate('Landing')}
-                accessibilityRole="button"
-            >
-                <ArrowLeft color={colors.text.cream} size={20} strokeWidth={2.5} />
-            </Pressable>
+            {!LOGIN_ONLY && (
+                <Pressable
+                    style={styles.back}
+                    onPress={() => navigation.navigate('Landing')}
+                    accessibilityRole="button"
+                >
+                    <ArrowLeft color={colors.text.cream} size={20} strokeWidth={2.5} />
+                </Pressable>
+            )}
             <Text style={styles.wordmark}>LUKU</Text>
 
             <KeyboardAvoidingView
@@ -149,26 +166,34 @@ const SignInScreen: React.FC<Props> = ({ navigation }) => {
                                 )}
                             </Pressable>
                         </View>
-                        <Pressable onPress={() => navigation.navigate('PasswordReset')}>
-                            <Text style={styles.forgot}>Forgot password?</Text>
-                        </Pressable>
+                        {!LOGIN_ONLY && (
+                            <Pressable onPress={() => navigation.navigate('PasswordReset')}>
+                                <Text style={styles.forgot}>Forgot password?</Text>
+                            </Pressable>
+                        )}
                         <GradientButton
                             label="Sign In"
                             loading={loading}
                             onPress={handleSignIn}
                         />
-                        <OrDivider />
-                        <SocialAuthRow />
+                        {!LOGIN_ONLY && (
+                            <>
+                                <OrDivider />
+                                <SocialAuthRow />
+                            </>
+                        )}
                     </View>
-                    <Pressable
-                        onPress={() => navigation.navigate('SignUp')}
-                        style={styles.switch}
-                    >
-                        <Text style={styles.switchText}>
-                            No account?{' '}
-                            <Text style={styles.switchBold}>Create one free</Text>
-                        </Text>
-                    </Pressable>
+                    {!LOGIN_ONLY && (
+                        <Pressable
+                            onPress={() => navigation.navigate('SignUp')}
+                            style={styles.switch}
+                        >
+                            <Text style={styles.switchText}>
+                                No account?{' '}
+                                <Text style={styles.switchBold}>Create one free</Text>
+                            </Text>
+                        </Pressable>
+                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
             <InfoDialog

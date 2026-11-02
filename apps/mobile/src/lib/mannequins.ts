@@ -17,6 +17,8 @@ export const MANNEQUINS: Mannequin[] = [
     { id: 'female_average', gender: 'female', label: 'Average', source: require('../../assets/mannequins/female_average.jpg') },
     { id: 'female_curvy', gender: 'female', label: 'Curvy', source: require('../../assets/mannequins/female_curvy.jpg') },
 ];
+// Public bucket holding the same six files, named <id>.jpg
+const MANNEQUIN_BASE_URL = 'https://<project-ref>.supabase.co/storage/v1/object/public/<bucket>';
 
 const MAX_BYTES = 9 * 1024 * 1024; // YouCam rejects files of 10 MB or more
 const cache = new Map<string, string>();
@@ -31,7 +33,8 @@ export async function mannequinToBase64(m: Mannequin): Promise<string> {
     const uri = asset.localUri ?? asset.uri;
     if (!uri) throw new Error('Mannequin image could not be located');
 
-    const res = await fetch(uri);
+    const isFetchable = /^(https?|file):\/\//i.test(uri);
+    const res = await fetch(isFetchable ? uri : `${MANNEQUIN_BASE_URL}/${m.id}.jpg`);
     if (!res.ok) throw new Error(`Could not load the ${m.label} mannequin (${res.status})`);
     const blob = await res.blob();
 
