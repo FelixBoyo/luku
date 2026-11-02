@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { Agent } from 'undici';
+import { Agent, fetch as undiciFetch } from 'undici';
 
 let adminClient: SupabaseClient | null = null;
 let anonClient: SupabaseClient | null = null;
@@ -212,7 +212,7 @@ export const getSupabaseAdmin = (): SupabaseClient => {
     adminClient = createClient(url, serviceKey, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: {
-            fetch: withSupabaseFetchTimeout(fetch, resetSupabaseAdmin),
+            fetch: withSupabaseFetchTimeout(undiciFetch as unknown as typeof fetch, resetSupabaseAdmin),
         },
     });
     return adminClient;

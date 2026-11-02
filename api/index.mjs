@@ -77741,7 +77741,7 @@ var init_supabaseAdmin = __esm({
       adminClient = (0, import_supabase_js.createClient)(url, serviceKey, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: {
-          fetch: withSupabaseFetchTimeout(fetch, resetSupabaseAdmin)
+          fetch: withSupabaseFetchTimeout(import_undici.fetch, resetSupabaseAdmin)
         }
       });
       return adminClient;
