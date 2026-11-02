@@ -35,7 +35,7 @@ type TryOnItem = {
     sellerWhatsapp?: string;
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms: number): Promise<void> => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const VirtualTryOnScreen: React.FC<Props> = ({ navigation, route }) => {
     const [mode, setMode] = useState<Mode>('upload');
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     stage: { position: 'relative' },
     stageImg: { width: '100%', aspectRatio: 3 / 4 },
     stageOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         backgroundColor: 'rgba(0,0,0,0.55)',
         alignItems: 'center',
         justifyContent: 'center',

@@ -2,6 +2,7 @@
   "expo": {
     "name": "LUKU",
     "slug": "luku-mobile",
+    "icon": "./assets/icon.png",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "luku",

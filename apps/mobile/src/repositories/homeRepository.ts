@@ -2,7 +2,7 @@ import type { OutfitOfDay } from '../types/domain/home';
 import { outfitsOfDay } from '../data/mock/home';
 import { apiGet } from '../api/apiClient';
 import type { OotdResponse, RecommendationsResponse } from '../../../../packages/contracts/src/ai';
-import type { WardrobeRepository } from './wardrobe';
+import type { WardrobeRepository } from './wardrobeRepository';
 
 export type HomeRepository = {
     listOutfitsOfDay: () => Promise<OutfitOfDay[]>;
