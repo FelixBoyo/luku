@@ -18,8 +18,7 @@ export const MANNEQUINS: Mannequin[] = [
     { id: 'female_curvy', gender: 'female', label: 'Curvy', source: require('../../assets/mannequins/female_curvy.jpg') },
 ];
 // Public bucket holding the same six files, named <id>.jpg
-const MANNEQUIN_BASE_URL = 'https://<project-ref>.supabase.co/storage/v1/object/public/<bucket>';
-
+const MANNEQUIN_BASE_URL ='https://szubfkpamgpicteuybiw.supabase.co/storage/v1/object/public/mannequins';
 const MAX_BYTES = 9 * 1024 * 1024; // YouCam rejects files of 10 MB or more
 const cache = new Map<string, string>();
 
