@@ -135768,6 +135768,47 @@ app.use(
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", requestId: res.locals.requestId });
 });
+app.get("/debug/env-check", async (_req, res) => {
+  const names = [
+    "SUPABASE_URL",
+    "VITE_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "YOUCAM_API_KEY",
+    "GEMINI_API_KEY"
+  ];
+  const shape = (v) => v === void 0 ? { present: false } : {
+    present: true,
+    length: v.length,
+    hasWhitespace: /\s/.test(v),
+    hasQuotes: /^["']|["']$/.test(v),
+    endsWithSlash: v.endsWith("/")
+  };
+  const vars = {};
+  for (const n of names) vars[n] = shape(process.env[n]);
+  const rawUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  let host = null;
+  try {
+    host = new URL(rawUrl).host;
+  } catch {
+    host = "INVALID_URL";
+  }
+  let probe;
+  try {
+    const r2 = await fetch(`${rawUrl.replace(/\/+$/, "")}/auth/v1/health`, {
+      headers: { apikey: key }
+    });
+    probe = { ok: true, status: r2.status };
+  } catch (e2) {
+    probe = {
+      ok: false,
+      message: e2?.message,
+      causeCode: e2?.cause?.code,
+      causeMessage: e2?.cause?.message
+    };
+  }
+  res.json({ vars, urlHost: host, probe, onVercel: Boolean(process.env.VERCEL) });
+});
 app.get("/health/supabase", async (req, res) => {
   const supabase = getSupabaseAdmin();
   const { count, error } = await supabase.from("payments").select("id", { count: "exact", head: true });
